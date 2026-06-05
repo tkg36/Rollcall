@@ -45,7 +45,7 @@ S3 bucket names must be unique across all AWS accounts globally. If a name is ta
 
 | Setting | What to put here |
 |---------|-----------------|
-| `aws.region` | AWS region to deploy into (e.g. `us-east-1`) |
+| `aws.region` | AWS region to deploy into (e.g. `us-east-1`) — **must be one of `us-east-1`, `us-west-2`, or `eu-west-1`**; SES email receiving is only supported in those three regions |
 | `aws.oidcRoleArn` | ARN of the IAM role GitHub Actions will use — your AWS team will provide this (Step 2) |
 
 Stack names under `stacks` can be left as-is unless they conflict with existing CloudFormation stacks in your account.
@@ -84,6 +84,10 @@ The deploy workflow is triggered manually to prevent unintended deployments.
 4. The workflow takes several minutes. Resources deploy in order: IAM roles → S3 buckets → reference data → SNS → SQS → SES rules → Lambda functions → CloudWatch alarms
 
 If a step fails, open the **AWS CloudFormation console**, click the failing stack, and open the **Events** tab — the error will be listed in plain English. Common issues are in the [Troubleshooting](#troubleshooting) section.
+
+### After the deploy completes — confirm the alarm notification email
+
+When the SNS alarm topics are created, AWS automatically sends a confirmation email to the address in `.github/CODEOWNERS`. The recipient must click **Confirm subscription** in that email before CloudWatch alarms will deliver notifications. The email comes from `no-reply@sns.amazonaws.com` with the subject line "AWS Notification - Subscription Confirmation". If it doesn't arrive within a few minutes, check spam.
 
 ---
 
@@ -168,7 +172,10 @@ Once DNS records have propagated (allow up to 24–48 hours after your DNS team 
 
 ## Troubleshooting
 
-**Deploy fails on the IAM stack**
+**Deploy fails on the IAM stack with `AlreadyExistsException`**
+The account already has an IAM role named `csvParser-role`, `rollcall-lambda-role`, or `ses-emailer-function-role`. Rename the conflicting roles in `infrastructure/iam.yaml` and update the matching `Role:` ARN lines in the three Lambda `template.yaml` files to match, then redeploy.
+
+**Deploy fails on the IAM stack with a permissions error**
 The GitHub Actions role lacks sufficient permissions. Ask your AWS team to verify it has `AdministratorAccess` or equivalent permissions covering CloudFormation, Lambda, IAM, SES, SQS, SNS, and S3.
 
 **Deploy fails with `BucketAlreadyExists`**
@@ -182,6 +189,12 @@ The expected XLSX attachments were not found in the CSV bucket. Check csvParser'
 
 **ses-emailer fails with `MessageRejected`**
 The account is still in SES sandbox (Step 5 not complete), or the subdomain is not yet verified (DNS records from Step 4 not yet propagated). Check **SES console → Verified identities** for the subdomain's verification status.
+
+**Lambda deploy fails referencing a layer ARN**
+The AWSSDKPandas Lambda layer is not available in the selected region. Confirm the deployment region is one of the three SES-supported regions (`us-east-1`, `us-west-2`, `eu-west-1`) and that the layer version exists there. The current layer ARNs are listed in `lambdas/csv-parser/template.yaml` and `lambdas/rollcall-lambda/template.yaml`; AWS publishes updated regional availability at [github.com/aws/aws-sdk-pandas](https://github.com/aws/aws-sdk-pandas/releases).
+
+**Alarm emails are not being received**
+The SNS subscription confirmation was not completed. Open the **SNS console → Topics**, find `Lambda1_Error_Notif` or `Lambda2_Error_Notif`, click **Subscriptions**, and check the status. If it shows `PendingConfirmation`, use **Request confirmation** to resend the email.
 
 ---
 
