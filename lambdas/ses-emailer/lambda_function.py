@@ -1,4 +1,5 @@
 import json
+import os
 import boto3
 import logging
 from email.mime.multipart import MIMEMultipart
@@ -27,7 +28,7 @@ def download_file_from_s3(bucket, key, local_path="/tmp/report.xlsx"):
 def send_email_with_attachment(to_email, subject, body, file_path):
     msg = MIMEMultipart()
     msg["Subject"] = subject
-    msg["From"] = "headcount-bot@vg-rollcall.com"
+    msg["From"] = os.environ.get("SENDER_EMAIL")
     msg["To"] = to_email
 
     # Body

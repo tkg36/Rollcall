@@ -8,6 +8,14 @@ Description: rollcall-lambda — processes XLSX recruitment reports, writes outp
 # VPC:      Required for RDS proxy connectivity
 # Source:   https://github.com/Brandon-Wang-CC/RollCall
 
+Parameters:
+  CsvBucket:
+    Type: String
+    Description: S3 bucket for processed XLSX attachments (csvParser writes, rollcall-lambda reads)
+  DeptsBucket:
+    Type: String
+    Description: S3 bucket for reference data and output workbook
+
 Resources:
 
   RollCallLambdaFunction:
@@ -32,6 +40,10 @@ Resources:
       Layers:
         - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:24
         - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:PyMySQL-Layer:2
+      Environment:
+        Variables:
+          CSV_BUCKET: !Ref CsvBucket
+          DEPTS_BUCKET: !Ref DeptsBucket
       Architectures:
         - x86_64
       EphemeralStorage:

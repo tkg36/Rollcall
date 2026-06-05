@@ -3,6 +3,7 @@ import io
 import logging
 import json
 import email
+import os
 import zipfile
 import xml.etree.ElementTree as ET
 import csv
@@ -19,7 +20,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Config
-CSV_BUCKET = "rollcall-s3-csv"
+CSV_BUCKET = os.environ.get("CSV_BUCKET")
 NS = {"main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
@@ -182,7 +183,7 @@ def parse_csv_to_rows(csv_bytes):
 # SNS Publisher
 # =========================
 def publish_to_sns(object_key: str):
-    topic_arn = "arn:aws:sns:us-east-1:844905860028:dataReceived"
+    topic_arn = os.environ.get("SNS_TOPIC_ARN")
 
     message = {
         "status": "processed",

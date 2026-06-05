@@ -6,6 +6,11 @@ Description: csvParser Lambda — parses raw inbound emails, extracts XLSX attac
 # Trigger:  SQS CSV-Parser-queue (from SNS emailReceived)
 # On start: wipes rollcall-s3-csv, then re-uploads current attachments
 
+Parameters:
+  CsvBucket:
+    Type: String
+    Description: S3 bucket to write processed XLSX attachments to
+
 Resources:
 
   CSVParserFunction:
@@ -23,7 +28,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:dataReceived
-          CSV_BUCKET: rollcall-s3-csv
+          CSV_BUCKET: !Ref CsvBucket
       Architectures:
         - x86_64
       EphemeralStorage:

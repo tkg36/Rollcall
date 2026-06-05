@@ -1,0 +1,23 @@
+# RollCall Pipeline — User Settings
+# Edit these values before deploying to a new environment.
+# Parameter names here match the CloudFormation parameters in each lambda template.
+
+# ─── Storage ──────────────────────────────────────────────────────────────────
+
+# S3 bucket that receives and stores processed XLSX attachments from inbound emails.
+# csvParser writes here; rollcall-lambda reads from here.
+CsvBucket: rollcall-s3-csv
+
+# S3 bucket for reference lookup files (cc_id.csv, depts.csv, status.csv, ESF WF data file ref.xlsx)
+# and where the completed output workbook is written for each run.
+DeptsBucket: rollcall-s3-dev-depts-reference
+
+# ─── Email ────────────────────────────────────────────────────────────────────
+
+# Domain that receives inbound trigger emails and sends outbound result emails.
+# Must be verified as an SES domain identity in the target AWS account.
+SenderDomain: vanguard.com
+
+# The "From" address used when emailing the output workbook back to the requester.
+# Must be an address within SenderDomain and a verified SES sender identity.
+SenderEmail: [Your monitored account]@vanguard.com

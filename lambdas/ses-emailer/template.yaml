@@ -5,7 +5,12 @@ Description: ses-emailer-function — sends the output XLSX back to the original
 # Handler: lambda_function.lambda_handler
 # Trigger:  S3 ObjectCreated:Put on rollcall-s3-dev-depts-reference (suffix: .xlsx)
 # Flow:     S3 key format is {to_email}/{filename}.xlsx — first path segment is recipient address
-# From:     headcount-bot@vg-rollcall.com
+# From:     configured via SENDER_EMAIL env var (see user-settings.yaml)
+
+Parameters:
+  SenderEmail:
+    Type: String
+    Description: Verified SES email address the pipeline sends output workbooks from
 
 Resources:
 
@@ -19,6 +24,9 @@ Resources:
       MemorySize: 1024
       Timeout: 63
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/ses-emailer-function-role-zyst4wou
+      Environment:
+        Variables:
+          SENDER_EMAIL: !Ref SenderEmail
       Architectures:
         - x86_64
       EphemeralStorage:
