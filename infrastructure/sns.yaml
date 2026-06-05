@@ -1,6 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: SNS topics for the RollCall ETL pipeline
 
+Parameters:
+  AlarmEmail:
+    Type: String
+    Description: Email address that receives CloudWatch alarm notifications on Lambda errors
+
 Resources:
 
   # Published by SES receipt rule when email arrives; subscribed by CSV-Parser-queue
@@ -36,7 +41,7 @@ Resources:
       TopicName: Lambda1_Error_Notif
       Subscription:
         - Protocol: email
-          Endpoint: ng599@drexel.edu
+          Endpoint: !Ref AlarmEmail
 
   # CloudWatch alarm notification for rollcall-lambda errors -> ng599@drexel.edu
   Lambda2ErrorNotifTopic:
@@ -45,7 +50,7 @@ Resources:
       TopicName: Lambda2_Error_Notif
       Subscription:
         - Protocol: email
-          Endpoint: ng599@drexel.edu
+          Endpoint: !Ref AlarmEmail
 
 Outputs:
   EmailReceivedTopicArn:

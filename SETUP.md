@@ -15,6 +15,7 @@ RollCall is an automated headcount reconciliation pipeline. When a trigger email
 
 - [ ] Fill in `user-settings.yaml`
 - [ ] Fill in `.github/deploy-config.yaml`
+- [ ] Set the alarm contact email in `.github/CODEOWNERS`
 - [ ] Have your AWS team complete the GitHub Actions access setup (Step 2)
 - [ ] Run the Deploy workflow (Step 3)
 - [ ] Have your DNS team add the SES records for the pipeline subdomain (Step 4)
@@ -24,7 +25,7 @@ RollCall is an automated headcount reconciliation pipeline. When a trigger email
 
 ## Step 1 — Fill in Configuration Files
 
-Two files need to be filled in before deploying.
+Three files need to be filled in before deploying.
 
 ### `user-settings.yaml` (root of repo)
 
@@ -48,6 +49,10 @@ S3 bucket names must be unique across all AWS accounts globally. If a name is ta
 | `aws.oidcRoleArn` | ARN of the IAM role GitHub Actions will use — your AWS team will provide this (Step 2) |
 
 Stack names under `stacks` can be left as-is unless they conflict with existing CloudFormation stacks in your account.
+
+### `.github/CODEOWNERS`
+
+Replace the placeholder email with the address that should receive CloudWatch alarm notifications if a Lambda error occurs during a pipeline run. This is typically an operations or on-call contact. The same address is also set as the GitHub code owner for the repository, so it will receive pull request review requests.
 
 ---
 

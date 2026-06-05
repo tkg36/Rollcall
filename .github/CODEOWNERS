@@ -1,0 +1,4 @@
+# Code owner for this repository.
+# This email also receives CloudWatch alarm notifications when pipeline errors occur.
+# Replace with the appropriate operations or on-call contact at your organization.
+* ops-contact@vanguard.com

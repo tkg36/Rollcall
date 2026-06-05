@@ -31,6 +31,7 @@ jobs:
       file-prefix-contractor-open: ${{ steps.read.outputs.file-prefix-contractor-open }}
       file-prefix-contractor-closed: ${{ steps.read.outputs.file-prefix-contractor-closed }}
       file-prefix-candidates:     ${{ steps.read.outputs.file-prefix-candidates }}
+      alarm-email:                ${{ steps.read.outputs.alarm-email }}
 
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +40,17 @@ jobs:
         name: Parse deploy-config.yaml and user-settings.yaml
         run: |
           python3 << 'EOF'
-          import yaml, os
+          import yaml, os, re
+
+          def codeowners_email(path):
+              with open(path) as f:
+                  for line in f:
+                      line = line.strip()
+                      if line and not line.startswith('#'):
+                          for token in line.split()[1:]:
+                              if re.match(r'^[^@]+@[^@]+\.[^@]+$', token):
+                                  return token
+              raise ValueError('No email found in CODEOWNERS')
 
           config   = yaml.safe_load(open('.github/deploy-config.yaml'))
           settings = yaml.safe_load(open('user-settings.yaml'))
@@ -65,6 +76,7 @@ jobs:
             'file-prefix-contractor-open':  settings['FilePrefixContractorOpen'],
             'file-prefix-contractor-closed': settings['FilePrefixContractorClosed'],
             'file-prefix-candidates':     settings['FilePrefixCandidates'],
+            'alarm-email':                codeowners_email('.github/CODEOWNERS'),
           }
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -98,6 +110,7 @@ jobs:
       FILE_PREFIX_CONTRACTOR_OPEN:    ${{ needs.load-config.outputs.file-prefix-contractor-open }}
       FILE_PREFIX_CONTRACTOR_CLOSED:  ${{ needs.load-config.outputs.file-prefix-contractor-closed }}
       FILE_PREFIX_CANDIDATES:         ${{ needs.load-config.outputs.file-prefix-candidates }}
+      ALARM_EMAIL:                    ${{ needs.load-config.outputs.alarm-email }}
 
     steps:
       - uses: actions/checkout@v4
@@ -141,6 +154,7 @@ jobs:
           aws cloudformation deploy \
             --template-file infrastructure/sns.yaml \
             --stack-name $STACK_SNS \
+            --parameter-overrides AlarmEmail="$ALARM_EMAIL" \
             --no-fail-on-empty-changeset
 
       - name: Deploy SQS queues
