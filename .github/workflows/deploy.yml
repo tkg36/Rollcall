@@ -1,9 +1,10 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - master
 
 jobs:
   # ── Read both config files and expose values to the deploy job ───────────────
