@@ -80,11 +80,9 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/AmazonSQSFullAccess
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
-        - arn:aws:iam::aws:policy/SecretsManagerReadWrite
       Policies:
         - PolicyName: RollCallS3AccessPolicy
           PolicyDocument:
@@ -100,13 +98,6 @@ Resources:
                   - !Sub arn:aws:s3:::${CsvBucket}/*
                   - !Sub arn:aws:s3:::${DeptsBucket}
                   - !Sub arn:aws:s3:::${DeptsBucket}/*
-        - PolicyName: SNS
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: sns:Publish
-                Resource: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:sendEmail
         - PolicyName: SES-sendRawEmail
           PolicyDocument:
             Version: '2012-10-17'
@@ -123,13 +114,6 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:ses-emailer-function
-        - PolicyName: LambdaRDSAuthentication
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: rds-db:connect
-                Resource: !Sub arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:proxy-1772133904467-rollcalldb/admin
 
   # ─── ses-emailer-function ────────────────────────────────────────────────────
 

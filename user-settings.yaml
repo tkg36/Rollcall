@@ -12,23 +12,8 @@ CsvBucket: rollcall-s3-csv
 # and where the completed output workbook is written for each run.
 DeptsBucket: rollcall-s3-dev-depts-reference
 
-# S3 bucket used exclusively for deployment-time artifacts (Lambda layer zips, etc.).
-# Not used by the pipeline at runtime — only touched during CI/CD deploys.
-ArtifactsBucket: rollcall-deployment-artifacts
-
 # S3 bucket where SES delivers raw inbound emails; csvParser reads from here.
 SesBucket: rollcall-s3-dev-ses
-
-# ─── VPC (required for rollcall-lambda → RDS connectivity) ───────────────────
-
-# Subnets that have routing to the RDS instance/proxy.
-VpcSubnetIds:
-  - FILL_SUBNET_ID_1_HERE
-  - FILL_SUBNET_ID_2_HERE
-
-# Security groups to attach to rollcall-lambda.
-VpcSecurityGroupIds:
-  - FILL_SECURITY_GROUP_ID_1_HERE
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 
