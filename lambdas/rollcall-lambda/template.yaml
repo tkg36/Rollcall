@@ -14,6 +14,18 @@ Parameters:
   DeptsBucket:
     Type: String
     Description: S3 bucket for reference data and output workbook
+  FilePrefixUnfilled:
+    Type: String
+    Description: Filename prefix for the unfilled requisitions report
+  FilePrefixContractorOpen:
+    Type: String
+    Description: Filename prefix for the open contractor requisitions report
+  FilePrefixContractorClosed:
+    Type: String
+    Description: Filename prefix for the closed contractor requisitions report
+  FilePrefixCandidates:
+    Type: String
+    Description: Filename prefix for the candidate flow report
 
 Resources:
 
@@ -33,6 +45,10 @@ Resources:
         Variables:
           CSV_BUCKET: !Ref CsvBucket
           DEPTS_BUCKET: !Ref DeptsBucket
+          FILE_PREFIX_UNFILLED: !Ref FilePrefixUnfilled
+          FILE_PREFIX_CONTRACTOR_OPEN: !Ref FilePrefixContractorOpen
+          FILE_PREFIX_CONTRACTOR_CLOSED: !Ref FilePrefixContractorClosed
+          FILE_PREFIX_CANDIDATES: !Ref FilePrefixCandidates
       Architectures:
         - x86_64
       EphemeralStorage:

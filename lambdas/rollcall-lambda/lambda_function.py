@@ -27,10 +27,10 @@ TMP_DIR = "/tmp" if os.environ.get("AWS_EXECUTION_ENV") else os.path.join(os.pat
 
 
 FILE_PREFIXES = {
-    "unfilled":          "ES&F_GR&S Unfilled Requisition Report",
-    "contractor_open":   "NEW-IT Contractor-VG-Vendor Req Report-Open",
-    "contractor_closed": "NEW-IT Contractor-VG-Vendor Req Report-Closed",
-    "candidates":        "GR&S Candidate Flow Weekly Report",
+    "unfilled":          os.environ.get("FILE_PREFIX_UNFILLED"),
+    "contractor_open":   os.environ.get("FILE_PREFIX_CONTRACTOR_OPEN"),
+    "contractor_closed": os.environ.get("FILE_PREFIX_CONTRACTOR_CLOSED"),
+    "candidates":        os.environ.get("FILE_PREFIX_CANDIDATES"),
 }
 
 FILTER_CONFIG = {

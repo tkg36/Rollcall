@@ -15,6 +15,14 @@ DeptsBucket: rollcall-s3-dev-depts-reference
 # S3 bucket where SES delivers raw inbound emails; csvParser reads from here.
 SesBucket: rollcall-s3-dev-ses
 
+# ─── Report File Prefixes ─────────────────────────────────────────────────────
+# The beginning of each expected attachment filename as it arrives in the CSV bucket.
+# Update these if the names of the incoming report files change.
+FilePrefixUnfilled: "ES&F_GR&S Unfilled Requisition Report"
+FilePrefixContractorOpen: "NEW-IT Contractor-VG-Vendor Req Report-Open"
+FilePrefixContractorClosed: "NEW-IT Contractor-VG-Vendor Req Report-Closed"
+FilePrefixCandidates: "GR&S Candidate Flow Weekly Report"
+
 # ─── Email ────────────────────────────────────────────────────────────────────
 
 # Subdomain that receives inbound trigger emails and sends outbound result emails.

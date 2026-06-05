@@ -25,8 +25,12 @@ jobs:
       csv-bucket:        ${{ steps.read.outputs.csv-bucket }}
       depts-bucket:      ${{ steps.read.outputs.depts-bucket }}
       ses-bucket:        ${{ steps.read.outputs.ses-bucket }}
-      sender-domain:     ${{ steps.read.outputs.sender-domain }}
-      sender-email:      ${{ steps.read.outputs.sender-email }}
+      sender-domain:              ${{ steps.read.outputs.sender-domain }}
+      sender-email:               ${{ steps.read.outputs.sender-email }}
+      file-prefix-unfilled:       ${{ steps.read.outputs.file-prefix-unfilled }}
+      file-prefix-contractor-open: ${{ steps.read.outputs.file-prefix-contractor-open }}
+      file-prefix-contractor-closed: ${{ steps.read.outputs.file-prefix-contractor-closed }}
+      file-prefix-candidates:     ${{ steps.read.outputs.file-prefix-candidates }}
 
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +59,12 @@ jobs:
             'csv-bucket':        settings['CsvBucket'],
             'depts-bucket':      settings['DeptsBucket'],
             'ses-bucket':        settings['SesBucket'],
-            'sender-domain':     settings['SenderDomain'],
-            'sender-email':      settings['SenderEmail'],
+            'sender-domain':              settings['SenderDomain'],
+            'sender-email':               settings['SenderEmail'],
+            'file-prefix-unfilled':       settings['FilePrefixUnfilled'],
+            'file-prefix-contractor-open':  settings['FilePrefixContractorOpen'],
+            'file-prefix-contractor-closed': settings['FilePrefixContractorClosed'],
+            'file-prefix-candidates':     settings['FilePrefixCandidates'],
           }
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -85,7 +93,11 @@ jobs:
       STACK_CLOUDWATCH:  ${{ needs.load-config.outputs.stack-cloudwatch }}
       STACK_CSV_PARSER:  ${{ needs.load-config.outputs.stack-csv-parser }}
       STACK_ROLLCALL:    ${{ needs.load-config.outputs.stack-rollcall }}
-      STACK_SES_EMAILER: ${{ needs.load-config.outputs.stack-ses-emailer }}
+      STACK_SES_EMAILER:              ${{ needs.load-config.outputs.stack-ses-emailer }}
+      FILE_PREFIX_UNFILLED:           ${{ needs.load-config.outputs.file-prefix-unfilled }}
+      FILE_PREFIX_CONTRACTOR_OPEN:    ${{ needs.load-config.outputs.file-prefix-contractor-open }}
+      FILE_PREFIX_CONTRACTOR_CLOSED:  ${{ needs.load-config.outputs.file-prefix-contractor-closed }}
+      FILE_PREFIX_CANDIDATES:         ${{ needs.load-config.outputs.file-prefix-candidates }}
 
     steps:
       - uses: actions/checkout@v4
@@ -174,7 +186,13 @@ jobs:
             --region $AWS_REGION \
             --resolve-s3 \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET \
+            --parameter-overrides \
+              CsvBucket=$CSV_BUCKET \
+              DeptsBucket=$DEPTS_BUCKET \
+              FilePrefixUnfilled="$FILE_PREFIX_UNFILLED" \
+              FilePrefixContractorOpen="$FILE_PREFIX_CONTRACTOR_OPEN" \
+              FilePrefixContractorClosed="$FILE_PREFIX_CONTRACTOR_CLOSED" \
+              FilePrefixCandidates="$FILE_PREFIX_CANDIDATES" \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
