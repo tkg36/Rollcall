@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: rollcall-lambda — processes XLSX recruitment reports, writes output workbook to rollcall-s3-dev-depts-reference
+
+# Handler: lambda_function.lambda_handler
+# Trigger:  SQS rollcall-sqs (from SNS dataReceived, published by csvParser)
+# Output:   ESF WF data file.xlsx written to rollcall-s3-dev-depts-reference/{retAddr}/
+# VPC:      Required for RDS proxy connectivity
+# Source:   https://github.com/Brandon-Wang-CC/RollCall
+
+Resources:
+
+  RollCallLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rollcall-lambda
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12
+      CodeUri: ./
+      MemorySize: 1024
+      Timeout: 300
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/rollcall-lambda-role-y37lw2l9
+      VpcConfig:
+        SubnetIds:
+          - subnet-070b38210b6404e09
+          - subnet-00af39ca95f73ee75
+        SecurityGroupIds:
+          - sg-007c467ecd97d5ca4
+          - sg-0f1303c9b6b9fd8bf
+          - sg-07a5385771fe2da52
+          - sg-09c5a7e2a844002cc
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:24
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:PyMySQL-Layer:2
+      Architectures:
+        - x86_64
+      EphemeralStorage:
+        Size: 1024
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:rollcall-sqs
+            BatchSize: 10
+      LoggingConfig:
+        LogFormat: Text
+        LogGroup: /aws/lambda/rollcall-lambda
+
+Outputs:
+  RollCallLambdaArn:
+    Value: !GetAtt RollCallLambdaFunction.Arn
+    Export:
+      Name: rollcall-lambda-arn

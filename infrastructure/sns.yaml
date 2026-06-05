@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SNS topics for the RollCall ETL pipeline
+
+Resources:
+
+  # Published by SES receipt rule when email arrives; subscribed by CSV-Parser-queue
+  EmailReceivedTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: emailReceived
+
+  EmailReceivedToCSVParserSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref EmailReceivedTopic
+      Protocol: sqs
+      Endpoint: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:CSV-Parser-queue
+
+  # Published by csvParser after uploading processed files; subscribed by rollcall-sqs
+  DataReceivedTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: dataReceived
+
+  DataReceivedToRollCallSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref DataReceivedTopic
+      Protocol: sqs
+      Endpoint: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:rollcall-sqs
+
+  # CloudWatch alarm notification for csvParser errors -> ng599@drexel.edu
+  Lambda1ErrorNotifTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: Lambda1_Error_Notif
+      Subscription:
+        - Protocol: email
+          Endpoint: ng599@drexel.edu
+
+  # CloudWatch alarm notification for rollcall-lambda errors -> ng599@drexel.edu
+  Lambda2ErrorNotifTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: Lambda2_Error_Notif
+      Subscription:
+        - Protocol: email
+          Endpoint: ng599@drexel.edu
+
+Outputs:
+  EmailReceivedTopicArn:
+    Value: !Ref EmailReceivedTopic
+    Export:
+      Name: sns-emailReceived-arn
+
+  DataReceivedTopicArn:
+    Value: !Ref DataReceivedTopic
+    Export:
+      Name: sns-dataReceived-arn

@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SES receipt rules and email identities for the RollCall ETL pipeline
+
+# NOTE: After deployment, activate the rule set manually:
+#   aws ses set-active-receipt-rule-set --rule-set-name DeliverToS3 --profile 844905860028_AWSAdministratorAccess
+
+Resources:
+
+  SESReceiptRuleSet:
+    Type: AWS::SES::ReceiptRuleSet
+    Properties:
+      RuleSetName: DeliverToS3
+
+  # Catches all inbound mail for vg-rollcall.com, saves to S3 with SNS notification
+  DeliverToS3Rule:
+    Type: AWS::SES::ReceiptRule
+    DependsOn: SESReceiptRuleSet
+    Properties:
+      RuleSetName: DeliverToS3
+      Rule:
+        Name: DeliverToS3
+        Enabled: true
+        TlsPolicy: Optional
+        ScanEnabled: true
+        Actions:
+          - S3Action:
+              TopicArn: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:emailReceived
+              BucketName: rollcall-s3-dev-ses
+              ObjectKeyPrefix: RAW_EMAIL
+              IamRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/SESWriteToS3
+
+  # Sending domain for headcount-bot@vg-rollcall.com
+  DomainIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: vg-rollcall.com
+
+  # Verified sender identity for pipeline replies
+  DrexelEmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: tkg36@drexel.edu

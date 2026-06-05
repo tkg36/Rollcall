@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ses-emailer-function — sends the output XLSX back to the original sender via SES
+
+# Handler: lambda_function.lambda_handler
+# Trigger:  S3 ObjectCreated:Put on rollcall-s3-dev-depts-reference (suffix: .xlsx)
+# Flow:     S3 key format is {to_email}/{filename}.xlsx — first path segment is recipient address
+# From:     headcount-bot@vg-rollcall.com
+
+Resources:
+
+  SESEmailerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ses-emailer-function
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.11
+      CodeUri: ./
+      MemorySize: 1024
+      Timeout: 63
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/ses-emailer-function-role-zyst4wou
+      Architectures:
+        - x86_64
+      EphemeralStorage:
+        Size: 1024
+      LoggingConfig:
+        LogFormat: Text
+        LogGroup: /aws/lambda/ses-emailer-function
+
+  # Permission for S3 to invoke this function
+  S3InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SESEmailerFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: arn:aws:s3:::rollcall-s3-dev-depts-reference
+
+Outputs:
+  SESEmailerFunctionArn:
+    Value: !GetAtt SESEmailerFunction.Arn
+    Export:
+      Name: ses-emailer-function-arn

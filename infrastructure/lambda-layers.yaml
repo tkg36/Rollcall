@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Custom Lambda layers for the RollCall pipeline
+
+# Public AWS-managed layers are referenced directly by ARN in Lambda templates.
+# This template manages only the account-owned custom layers.
+
+Resources:
+
+  # PyMySQL for Python 3.11 — used by rollcall-lambda (version :2 is deployed)
+  PyMySQLLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: PyMySQL-Layer
+      Description: PyMySQL driver for MySQL connectivity from Lambda
+      CompatibleRuntimes:
+        - python3.11
+      CompatibleArchitectures:
+        - x86_64
+      # Upload the layer zip to S3 and reference it here before deploying
+      Content:
+        S3Bucket: !Sub rollcall-s3-dev-depts-reference
+        S3Key: layers/PyMySQL-Layer.zip
+
+  # numpy for Python 3.12 (currently unused by deployed functions)
+  NumpyLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: numpy
+      Description: numpy for Python 3.12
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - x86_64
+      Content:
+        S3Bucket: !Sub rollcall-s3-dev-depts-reference
+        S3Key: layers/numpy.zip
+
+# Public layers referenced in Lambda templates (not managed here):
+#   AWSSDKPandas-Python312:24  -> arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:24
+#   AWSSDKPandas-Python314:7   -> arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python314:7

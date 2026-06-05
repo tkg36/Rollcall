@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: csvParser Lambda — parses raw inbound emails, extracts XLSX attachments to rollcall-s3-csv, publishes to SNS dataReceived
+
+# Handler: theLambda.lambda_handler
+# Trigger:  SQS CSV-Parser-queue (from SNS emailReceived)
+# On start: wipes rollcall-s3-csv, then re-uploads current attachments
+
+Resources:
+
+  CSVParserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: csvParser
+      Handler: theLambda.lambda_handler
+      Runtime: python3.12
+      CodeUri: ./
+      MemorySize: 2048
+      Timeout: 300
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/csvParser-role-c12ck2wl
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python314:7
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:dataReceived
+          CSV_BUCKET: rollcall-s3-csv
+      Architectures:
+        - x86_64
+      EphemeralStorage:
+        Size: 1024
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:CSV-Parser-queue
+            BatchSize: 10
+      LoggingConfig:
+        LogFormat: Text
+        LogGroup: /aws/lambda/csvParser
+
+Outputs:
+  CSVParserFunctionArn:
+    Value: !GetAtt CSVParserFunction.Arn
+    Export:
+      Name: csvParser-function-arn

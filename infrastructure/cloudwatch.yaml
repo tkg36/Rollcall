@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudWatch alarms for RollCall Lambda error monitoring
+
+Resources:
+
+  # Fires when csvParser has any errors in a 5-minute window
+  CSVParserErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Lambda1_Errors
+      ActionsEnabled: true
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Lambda1_Error_Notif
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      Dimensions:
+        - Name: FunctionName
+          Value: csvParser
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+
+  # Fires when rollcall-lambda has any errors in a 5-minute window
+  RollCallLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Lambda2_Errors
+      ActionsEnabled: true
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Lambda2_Error_Notif
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      Dimensions:
+        - Name: FunctionName
+          Value: rollcall-lambda
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold

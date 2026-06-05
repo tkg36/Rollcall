@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SQS queues for the RollCall ETL pipeline
+
+Resources:
+
+  # Dead-letter queue for rollcall-sqs (maxReceiveCount: 5)
+  RollCallDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: rollcall-dlq-sqs
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 345600
+      SqsManagedSseEnabled: true
+
+  # Main queue — receives from SNS dataReceived, triggers rollcall-lambda
+  RollCallQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: rollcall-sqs
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RollCallDLQ.Arn
+        maxReceiveCount: 5
+      SqsManagedSseEnabled: true
+
+  RollCallQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref RollCallQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowSNSTopicToSendMessages
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt RollCallQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:dataReceived
+          - Sid: topic-subscription-dataReceived
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: SQS:SendMessage
+            Resource: !GetAtt RollCallQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:dataReceived
+
+  # Receives from SNS emailReceived, triggers csvParser
+  CSVParserQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: CSV-Parser-queue
+      VisibilityTimeout: 360
+      MessageRetentionPeriod: 345600
+      SqsManagedSseEnabled: true
+
+  CSVParserQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref CSVParserQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowOwner
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: SQS:*
+            Resource: !GetAtt CSVParserQueue.Arn
+          - Sid: topic-subscription-emailReceived
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: SQS:SendMessage
+            Resource: !GetAtt CSVParserQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:emailReceived
+
+Outputs:
+  RollCallQueueArn:
+    Value: !GetAtt RollCallQueue.Arn
+    Export:
+      Name: rollcall-sqs-arn
+
+  RollCallDLQArn:
+    Value: !GetAtt RollCallDLQ.Arn
+    Export:
+      Name: rollcall-dlq-sqs-arn
+
+  CSVParserQueueArn:
+    Value: !GetAtt CSVParserQueue.Arn
+    Export:
+      Name: csv-parser-queue-arn
