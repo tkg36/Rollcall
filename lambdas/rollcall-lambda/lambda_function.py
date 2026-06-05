@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 # =========================
 # AWS Clients
 # =========================
-s3 = boto3.client("s3", region_name="us-east-1")
+s3 = boto3.client("s3")
 
 # =========================
 # Constants

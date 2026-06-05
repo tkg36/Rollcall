@@ -8,7 +8,7 @@ from email.mime.application import MIMEApplication
 import urllib.parse
 
 s3 = boto3.client("s3")
-ses = boto3.client("ses", region_name="us-east-1")
+ses = boto3.client("ses")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
