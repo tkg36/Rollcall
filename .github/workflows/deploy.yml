@@ -121,6 +121,10 @@ jobs:
             --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET ArtifactsBucket=$ARTIFACTS_BUCKET \
             --no-fail-on-empty-changeset
 
+      - name: Upload reference data to S3
+        run: |
+          aws s3 sync reference-data/ s3://$DEPTS_BUCKET/ --exact-timestamps
+
       - name: Upload layer zips to S3
         run: |
           aws s3 cp layers/PyMySQL-Layer.zip s3://$ARTIFACTS_BUCKET/layers/PyMySQL-Layer.zip

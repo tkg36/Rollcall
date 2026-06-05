@@ -1,0 +1,17 @@
+﻿status,short status
+Requisition Cancelled,Cancelled
+Declined by Candidate,Declined
+Awaiting Manager Feedback,Interview
+Interview Scheduled,Interview
+Interview,Interview
+Assessment,Interview
+Employment Agreement,Offer
+Background Check,Offer
+Offer,Offer
+Requisition on Pause,On Hold
+Searching for qualified candidates,Open
+Review,Open
+Screen,Open
+Candidate Accepted Offer,Ready for Hire
+Ready for Hire,Ready for Hire
+Rejected,Rejected
