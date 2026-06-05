@@ -24,4 +24,4 @@ SenderDomain: vanguard.com
 
 # The "From" address used when emailing the output workbook back to the requester.
 # Must be an address within SenderDomain and a verified SES sender identity.
-SenderEmail: [Your monitored account]@vanguard.com
+SenderEmail: "[Your monitored account]@vanguard.com"
