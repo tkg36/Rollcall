@@ -10,10 +10,10 @@ CsvBucket: rollcall-s3-csv
 
 # S3 bucket for reference lookup files (cc_id.csv, depts.csv, status.csv, ESF WF data file ref.xlsx)
 # and where the completed output workbook is written for each run.
-DeptsBucket: rollcall-s3-dev-depts-reference
+DeptsBucket: rollcall-s3-depts-reference
 
 # S3 bucket where SES delivers raw inbound emails; csvParser reads from here.
-SesBucket: rollcall-s3-dev-ses
+SesBucket: rollcall-s3-ses
 
 # ─── Report File Prefixes ─────────────────────────────────────────────────────
 # The beginning of each expected attachment filename as it arrives in the CSV bucket.

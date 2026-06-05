@@ -19,7 +19,7 @@ Resources:
   CSVParserRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: csvParser-role-c12ck2wl
+      RoleName: csvParser-role
       Path: /service-role/
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -70,7 +70,7 @@ Resources:
   RollCallLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: rollcall-lambda-role-y37lw2l9
+      RoleName: rollcall-lambda-role
       Path: /service-role/
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -120,7 +120,7 @@ Resources:
   SESEmailerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: ses-emailer-function-role-zyst4wou
+      RoleName: ses-emailer-function-role
       Path: /service-role/
       AssumeRolePolicyDocument:
         Version: '2012-10-17'

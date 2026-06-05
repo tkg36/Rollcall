@@ -29,10 +29,10 @@ NS = {"main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 # =========================
 #Idea, we take the first two files and make copies of them and place them inside the s3 bucket. 
 #Then for NEW IT contractor report, we take the open and closed sheets and make copies of them and place them inside the s3 bucket.
-def process_fileNEW(filename, file_content):
+def process_file(filename, file_content):
     try:
         if not filename.lower().endswith(".xlsx"):
-            logger.info("Skipping unsupported file in process_fileNEW: %s", filename)
+            logger.info("Skipping unsupported file in process_file: %s", filename)
             return []
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -77,7 +77,7 @@ def process_fileNEW(filename, file_content):
         return results
 
     except Exception as e:
-        logger.error("Error in process_fileNEW %s: %s", filename, e)
+        logger.error("Error in process_file %s: %s", filename, e)
         return []
     
 def extract_sheet_to_xlsx_bytes(xlsx_bytes, sheet_name):
@@ -261,7 +261,7 @@ def lambda_handler(event, context):
             file_content = part.get_payload(decode=True)
             total_files += 1
 
-            results = process_fileNEW(filename, file_content)
+            results = process_file(filename, file_content)
             processed_files.extend(results)
 
             del file_content

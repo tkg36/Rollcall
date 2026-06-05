@@ -26,11 +26,7 @@ Resources:
           - Id: rollcall-auto-delete-30-days
             Status: Enabled
             ExpirationInDays: 30
-          - Id: lifecycletesting1
-            Status: Enabled
-            Filter:
-              Prefix: "lifecycletesting/ES&F_GR&S Unfilled Requisition Report 2026-04-27 06_35 EDT-20260429-235207.xlsx"
-            ExpirationInDays: 1
+
 
   # Holds reference CSVs and output XLSX; S3 event on .xlsx triggers ses-emailer-function
   RollCallDeptsBucket:

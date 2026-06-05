@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: csvParser Lambda — parses raw inbound emails, extracts XLSX attachments to rollcall-s3-csv, publishes to SNS dataReceived
+Description: csvParser Lambda — parses raw inbound emails, extracts XLSX attachments to CsvBucket, publishes to SNS dataReceived
 
 # Handler: theLambda.lambda_handler
 # Trigger:  SQS CSV-Parser-queue (from SNS emailReceived)
-# On start: wipes rollcall-s3-csv, then re-uploads current attachments
+# On start: wipes CsvBucket, then re-uploads current attachments
 
 Parameters:
   CsvBucket:
@@ -22,7 +22,7 @@ Resources:
       CodeUri: ./
       MemorySize: 2048
       Timeout: 300
-      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/csvParser-role-c12ck2wl
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/csvParser-role
       Layers:
         - !Sub arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python314:7
       Environment:

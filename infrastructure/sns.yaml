@@ -34,7 +34,7 @@ Resources:
       Protocol: sqs
       Endpoint: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:rollcall-sqs
 
-  # CloudWatch alarm notification for csvParser errors -> ng599@drexel.edu
+  # CloudWatch alarm notification for csvParser errors
   Lambda1ErrorNotifTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -43,7 +43,7 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlarmEmail
 
-  # CloudWatch alarm notification for rollcall-lambda errors -> ng599@drexel.edu
+  # CloudWatch alarm notification for rollcall-lambda errors
   Lambda2ErrorNotifTopic:
     Type: AWS::SNS::Topic
     Properties:
