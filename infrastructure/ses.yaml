@@ -6,6 +6,9 @@ Parameters:
   SenderDomain:
     Type: String
     Description: Domain verified in SES for inbound and outbound email
+  SesBucket:
+    Type: String
+    Description: S3 bucket where SES delivers raw inbound emails
 
 Resources:
 
@@ -28,7 +31,7 @@ Resources:
         Actions:
           - S3Action:
               TopicArn: !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:emailReceived
-              BucketName: rollcall-s3-dev-ses
+              BucketName: !Ref SesBucket
               ObjectKeyPrefix: RAW_EMAIL
               IamRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/SESWriteToS3
 

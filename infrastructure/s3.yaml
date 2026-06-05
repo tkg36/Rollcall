@@ -11,6 +11,9 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: S3 bucket for deployment-time artifacts (Lambda layer zips, etc.) — not used at runtime
+  SesBucket:
+    Type: String
+    Description: S3 bucket where SES delivers raw inbound emails
 
 Resources:
 
@@ -52,7 +55,7 @@ Resources:
   RollCallSESBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: rollcall-s3-dev-ses
+      BucketName: !Ref SesBucket
 
   # Deployment-time artifacts only — Lambda layer zips uploaded here before layer stacks deploy
   RollCallArtifactsBucket:
@@ -74,7 +77,7 @@ Outputs:
   SESBucketName:
     Value: !Ref RollCallSESBucket
     Export:
-      Name: rollcall-s3-dev-ses
+      Name: !Ref SesBucket
 
   ArtifactsBucketName:
     Value: !Ref RollCallArtifactsBucket

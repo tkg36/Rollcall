@@ -1,6 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: IAM roles for all three RollCall Lambda functions
 
+Parameters:
+  CsvBucket:
+    Type: String
+    Description: S3 bucket for processed XLSX attachments
+  DeptsBucket:
+    Type: String
+    Description: S3 bucket for reference data and output workbook
+  SesBucket:
+    Type: String
+    Description: S3 bucket where SES delivers raw inbound emails
+
 Resources:
 
   # ─── csvParser ───────────────────────────────────────────────────────────────
@@ -30,14 +41,14 @@ Resources:
                   - s3:PutObject
                   - s3:GetObject
                 Resource:
-                  - arn:aws:s3:::rollcall-s3-dev-ses/*
-                  - arn:aws:s3:::rollcall-s3-csv/*
+                  - !Sub arn:aws:s3:::${SesBucket}/*
+                  - !Sub arn:aws:s3:::${CsvBucket}/*
               - Effect: Allow
                 Action: s3:ListBucket
-                Resource: arn:aws:s3:::rollcall-s3-csv
+                Resource: !Sub arn:aws:s3:::${CsvBucket}
               - Effect: Allow
                 Action: s3:DeleteObject
-                Resource: arn:aws:s3:::rollcall-s3-csv/*
+                Resource: !Sub arn:aws:s3:::${CsvBucket}/*
               - Sid: VisualEditor1
                 Effect: Allow
                 Action: sns:Publish
@@ -85,10 +96,10 @@ Resources:
                   - s3:ListBucket
                   - s3:PutObject
                 Resource:
-                  - arn:aws:s3:::rollcall-s3-csv
-                  - arn:aws:s3:::rollcall-s3-csv/*
-                  - arn:aws:s3:::rollcall-s3-dev-depts-reference
-                  - arn:aws:s3:::rollcall-s3-dev-depts-reference/*
+                  - !Sub arn:aws:s3:::${CsvBucket}
+                  - !Sub arn:aws:s3:::${CsvBucket}/*
+                  - !Sub arn:aws:s3:::${DeptsBucket}
+                  - !Sub arn:aws:s3:::${DeptsBucket}/*
         - PolicyName: SNS
           PolicyDocument:
             Version: '2012-10-17'
@@ -143,19 +154,45 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: s3:GetObject
-                Resource: arn:aws:s3:::rollcall-s3-csv/*
+                Resource: !Sub arn:aws:s3:::${CsvBucket}/*
               - Effect: Allow
                 Action: s3:GetObject
-                Resource: arn:aws:s3:::rollcall-s3-dev-depts-reference/*
+                Resource: !Sub arn:aws:s3:::${DeptsBucket}/*
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:ses-emailer-function
                 Condition:
                   ArnLike:
-                    AWS:SourceArn: arn:aws:s3:::rollcall-s3-dev-depts-reference
+                    AWS:SourceArn: !Sub arn:aws:s3:::${DeptsBucket}
               - Effect: Allow
                 Action: ses:SendRawEmail
                 Resource: '*'
+
+  # ─── SES → S3 write role ─────────────────────────────────────────────────────
+
+  # Assumed by SES to deliver inbound emails to the SES staging bucket
+  SESWriteToS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SESWriteToS3
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: WriteToSESBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub arn:aws:s3:::${SesBucket}/*
 
 Outputs:
   CSVParserRoleArn:
@@ -172,3 +209,8 @@ Outputs:
     Value: !GetAtt SESEmailerRole.Arn
     Export:
       Name: ses-emailer-role-arn
+
+  SESWriteToS3RoleArn:
+    Value: !GetAtt SESWriteToS3Role.Arn
+    Export:
+      Name: ses-write-to-s3-role-arn

@@ -11,6 +11,9 @@ Parameters:
   SenderEmail:
     Type: String
     Description: Verified SES email address the pipeline sends output workbooks from
+  DeptsBucket:
+    Type: String
+    Description: S3 bucket that triggers this function on .xlsx upload
 
 Resources:
 
@@ -42,7 +45,7 @@ Resources:
       FunctionName: !Ref SESEmailerFunction
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: arn:aws:s3:::rollcall-s3-dev-depts-reference
+      SourceArn: !Sub arn:aws:s3:::${DeptsBucket}
 
 Outputs:
   SESEmailerFunctionArn:

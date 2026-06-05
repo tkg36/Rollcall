@@ -23,11 +23,14 @@ jobs:
       stack-csv-parser:    ${{ steps.read.outputs.stack-csv-parser }}
       stack-rollcall:      ${{ steps.read.outputs.stack-rollcall }}
       stack-ses-emailer:   ${{ steps.read.outputs.stack-ses-emailer }}
-      csv-bucket:        ${{ steps.read.outputs.csv-bucket }}
-      depts-bucket:      ${{ steps.read.outputs.depts-bucket }}
-      artifacts-bucket:  ${{ steps.read.outputs.artifacts-bucket }}
-      sender-domain:     ${{ steps.read.outputs.sender-domain }}
-      sender-email:      ${{ steps.read.outputs.sender-email }}
+      csv-bucket:              ${{ steps.read.outputs.csv-bucket }}
+      depts-bucket:            ${{ steps.read.outputs.depts-bucket }}
+      artifacts-bucket:        ${{ steps.read.outputs.artifacts-bucket }}
+      ses-bucket:              ${{ steps.read.outputs.ses-bucket }}
+      sender-domain:           ${{ steps.read.outputs.sender-domain }}
+      sender-email:            ${{ steps.read.outputs.sender-email }}
+      vpc-subnet-ids:          ${{ steps.read.outputs.vpc-subnet-ids }}
+      vpc-security-group-ids:  ${{ steps.read.outputs.vpc-security-group-ids }}
 
     steps:
       - uses: actions/checkout@v4
@@ -54,11 +57,14 @@ jobs:
             'stack-csv-parser':    config['stacks']['csvParser'],
             'stack-rollcall':      config['stacks']['rollcallLambda'],
             'stack-ses-emailer':   config['stacks']['sesEmailer'],
-            'csv-bucket':        settings['CsvBucket'],
-            'depts-bucket':      settings['DeptsBucket'],
-            'artifacts-bucket':  settings['ArtifactsBucket'],
-            'sender-domain':     settings['SenderDomain'],
-            'sender-email':      settings['SenderEmail'],
+            'csv-bucket':             settings['CsvBucket'],
+            'depts-bucket':           settings['DeptsBucket'],
+            'artifacts-bucket':       settings['ArtifactsBucket'],
+            'ses-bucket':             settings['SesBucket'],
+            'sender-domain':          settings['SenderDomain'],
+            'sender-email':           settings['SenderEmail'],
+            'vpc-subnet-ids':         ','.join(settings['VpcSubnetIds']),
+            'vpc-security-group-ids': ','.join(settings['VpcSecurityGroupIds']),
           }
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -74,11 +80,14 @@ jobs:
 
     env:
       AWS_REGION:        ${{ needs.load-config.outputs.aws-region }}
-      CSV_BUCKET:        ${{ needs.load-config.outputs.csv-bucket }}
-      DEPTS_BUCKET:      ${{ needs.load-config.outputs.depts-bucket }}
-      ARTIFACTS_BUCKET:  ${{ needs.load-config.outputs.artifacts-bucket }}
-      SENDER_DOMAIN:     ${{ needs.load-config.outputs.sender-domain }}
-      SENDER_EMAIL:      ${{ needs.load-config.outputs.sender-email }}
+      CSV_BUCKET:              ${{ needs.load-config.outputs.csv-bucket }}
+      DEPTS_BUCKET:            ${{ needs.load-config.outputs.depts-bucket }}
+      ARTIFACTS_BUCKET:        ${{ needs.load-config.outputs.artifacts-bucket }}
+      SES_BUCKET:              ${{ needs.load-config.outputs.ses-bucket }}
+      SENDER_DOMAIN:           ${{ needs.load-config.outputs.sender-domain }}
+      SENDER_EMAIL:            ${{ needs.load-config.outputs.sender-email }}
+      VPC_SUBNET_IDS:          ${{ needs.load-config.outputs.vpc-subnet-ids }}
+      VPC_SECURITY_GROUP_IDS:  ${{ needs.load-config.outputs.vpc-security-group-ids }}
       STACK_IAM:         ${{ needs.load-config.outputs.stack-iam }}
       STACK_S3:          ${{ needs.load-config.outputs.stack-s3 }}
       STACK_SNS:         ${{ needs.load-config.outputs.stack-sns }}
@@ -112,6 +121,7 @@ jobs:
             --template-file infrastructure/iam.yaml \
             --stack-name $STACK_IAM \
             --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET SesBucket=$SES_BUCKET \
             --no-fail-on-empty-changeset
 
       - name: Deploy S3 buckets
@@ -119,7 +129,7 @@ jobs:
           aws cloudformation deploy \
             --template-file infrastructure/s3.yaml \
             --stack-name $STACK_S3 \
-            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET ArtifactsBucket=$ARTIFACTS_BUCKET \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET ArtifactsBucket=$ARTIFACTS_BUCKET SesBucket=$SES_BUCKET \
             --no-fail-on-empty-changeset
 
       - name: Upload reference data to S3
@@ -164,7 +174,7 @@ jobs:
           aws cloudformation deploy \
             --template-file infrastructure/ses.yaml \
             --stack-name $STACK_SES \
-            --parameter-overrides SenderDomain=$SENDER_DOMAIN \
+            --parameter-overrides SenderDomain=$SENDER_DOMAIN SesBucket=$SES_BUCKET \
             --no-fail-on-empty-changeset
 
       # ── Lambda functions ──────────────────────────────────────────────────────
@@ -195,7 +205,7 @@ jobs:
             --region $AWS_REGION \
             --resolve-s3 \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET PyMySQLLayerArn=$PYMYSQL_LAYER_ARN \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET PyMySQLLayerArn=$PYMYSQL_LAYER_ARN "VpcSubnetIds=$VPC_SUBNET_IDS" "VpcSecurityGroupIds=$VPC_SECURITY_GROUP_IDS" \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
@@ -207,7 +217,7 @@ jobs:
             --region $AWS_REGION \
             --resolve-s3 \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides SenderEmail=$SENDER_EMAIL \
+            --parameter-overrides SenderEmail=$SENDER_EMAIL DeptsBucket=$DEPTS_BUCKET \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
