@@ -15,6 +15,9 @@ Parameters:
   DeptsBucket:
     Type: String
     Description: S3 bucket for reference data and output workbook
+  PyMySQLLayerArn:
+    Type: String
+    Description: ARN of the PyMySQL Lambda layer (deployed by rollcall-lambda-layers stack)
 
 Resources:
 
@@ -39,7 +42,7 @@ Resources:
           - sg-09c5a7e2a844002cc
       Layers:
         - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:24
-        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:PyMySQL-Layer:2
+        - !Ref PyMySQLLayerArn
       Environment:
         Variables:
           CSV_BUCKET: !Ref CsvBucket

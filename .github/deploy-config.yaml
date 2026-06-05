@@ -21,6 +21,7 @@ stacks:
   sns: rollcall-sns
   sqs: rollcall-sqs
   ses: rollcall-ses
+  lambdaLayers: rollcall-lambda-layers
   cloudwatch: rollcall-cloudwatch
   csvParser: rollcall-csv-parser
   rollcallLambda: rollcall-lambda

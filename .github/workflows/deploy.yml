@@ -18,11 +18,13 @@ jobs:
       stack-sqs:         ${{ steps.read.outputs.stack-sqs }}
       stack-ses:         ${{ steps.read.outputs.stack-ses }}
       stack-cloudwatch:  ${{ steps.read.outputs.stack-cloudwatch }}
-      stack-csv-parser:  ${{ steps.read.outputs.stack-csv-parser }}
-      stack-rollcall:    ${{ steps.read.outputs.stack-rollcall }}
-      stack-ses-emailer: ${{ steps.read.outputs.stack-ses-emailer }}
+      stack-lambda-layers: ${{ steps.read.outputs.stack-lambda-layers }}
+      stack-csv-parser:    ${{ steps.read.outputs.stack-csv-parser }}
+      stack-rollcall:      ${{ steps.read.outputs.stack-rollcall }}
+      stack-ses-emailer:   ${{ steps.read.outputs.stack-ses-emailer }}
       csv-bucket:        ${{ steps.read.outputs.csv-bucket }}
       depts-bucket:      ${{ steps.read.outputs.depts-bucket }}
+      artifacts-bucket:  ${{ steps.read.outputs.artifacts-bucket }}
       sender-domain:     ${{ steps.read.outputs.sender-domain }}
       sender-email:      ${{ steps.read.outputs.sender-email }}
 
@@ -47,11 +49,13 @@ jobs:
             'stack-sqs':         config['stacks']['sqs'],
             'stack-ses':         config['stacks']['ses'],
             'stack-cloudwatch':  config['stacks']['cloudwatch'],
-            'stack-csv-parser':  config['stacks']['csvParser'],
-            'stack-rollcall':    config['stacks']['rollcallLambda'],
-            'stack-ses-emailer': config['stacks']['sesEmailer'],
+            'stack-lambda-layers': config['stacks']['lambdaLayers'],
+            'stack-csv-parser':    config['stacks']['csvParser'],
+            'stack-rollcall':      config['stacks']['rollcallLambda'],
+            'stack-ses-emailer':   config['stacks']['sesEmailer'],
             'csv-bucket':        settings['CsvBucket'],
             'depts-bucket':      settings['DeptsBucket'],
+            'artifacts-bucket':  settings['ArtifactsBucket'],
             'sender-domain':     settings['SenderDomain'],
             'sender-email':      settings['SenderEmail'],
           }
@@ -71,6 +75,7 @@ jobs:
       AWS_REGION:        ${{ needs.load-config.outputs.aws-region }}
       CSV_BUCKET:        ${{ needs.load-config.outputs.csv-bucket }}
       DEPTS_BUCKET:      ${{ needs.load-config.outputs.depts-bucket }}
+      ARTIFACTS_BUCKET:  ${{ needs.load-config.outputs.artifacts-bucket }}
       SENDER_DOMAIN:     ${{ needs.load-config.outputs.sender-domain }}
       SENDER_EMAIL:      ${{ needs.load-config.outputs.sender-email }}
       STACK_IAM:         ${{ needs.load-config.outputs.stack-iam }}
@@ -79,9 +84,10 @@ jobs:
       STACK_SQS:         ${{ needs.load-config.outputs.stack-sqs }}
       STACK_SES:         ${{ needs.load-config.outputs.stack-ses }}
       STACK_CLOUDWATCH:  ${{ needs.load-config.outputs.stack-cloudwatch }}
-      STACK_CSV_PARSER:  ${{ needs.load-config.outputs.stack-csv-parser }}
-      STACK_ROLLCALL:    ${{ needs.load-config.outputs.stack-rollcall }}
-      STACK_SES_EMAILER: ${{ needs.load-config.outputs.stack-ses-emailer }}
+      STACK_LAMBDA_LAYERS: ${{ needs.load-config.outputs.stack-lambda-layers }}
+      STACK_CSV_PARSER:    ${{ needs.load-config.outputs.stack-csv-parser }}
+      STACK_ROLLCALL:      ${{ needs.load-config.outputs.stack-rollcall }}
+      STACK_SES_EMAILER:   ${{ needs.load-config.outputs.stack-ses-emailer }}
 
     steps:
       - uses: actions/checkout@v4
@@ -112,8 +118,27 @@ jobs:
           aws cloudformation deploy \
             --template-file infrastructure/s3.yaml \
             --stack-name $STACK_S3 \
-            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET ArtifactsBucket=$ARTIFACTS_BUCKET \
             --no-fail-on-empty-changeset
+
+      - name: Upload layer zips to S3
+        run: |
+          aws s3 cp layers/PyMySQL-Layer.zip s3://$ARTIFACTS_BUCKET/layers/PyMySQL-Layer.zip
+          aws s3 cp layers/numpy.zip          s3://$ARTIFACTS_BUCKET/layers/numpy.zip
+
+      - name: Deploy Lambda layers
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/lambda-layers.yaml \
+            --stack-name $STACK_LAMBDA_LAYERS \
+            --parameter-overrides ArtifactsBucket=$ARTIFACTS_BUCKET \
+            --no-fail-on-empty-changeset
+
+          PYMYSQL_LAYER_ARN=$(aws cloudformation describe-stacks \
+            --stack-name $STACK_LAMBDA_LAYERS \
+            --query "Stacks[0].Outputs[?OutputKey=='PyMySQLLayerArn'].OutputValue" \
+            --output text)
+          echo "PYMYSQL_LAYER_ARN=$PYMYSQL_LAYER_ARN" >> $GITHUB_ENV
 
       - name: Deploy SNS topics
         run: |
@@ -165,7 +190,7 @@ jobs:
             --region $AWS_REGION \
             --resolve-s3 \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET PyMySQLLayerArn=$PYMYSQL_LAYER_ARN \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 

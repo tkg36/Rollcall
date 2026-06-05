@@ -12,6 +12,10 @@ CsvBucket: rollcall-s3-csv
 # and where the completed output workbook is written for each run.
 DeptsBucket: rollcall-s3-dev-depts-reference
 
+# S3 bucket used exclusively for deployment-time artifacts (Lambda layer zips, etc.).
+# Not used by the pipeline at runtime — only touched during CI/CD deploys.
+ArtifactsBucket: rollcall-deployment-artifacts
+
 # ─── Email ────────────────────────────────────────────────────────────────────
 
 # Domain that receives inbound trigger emails and sends outbound result emails.

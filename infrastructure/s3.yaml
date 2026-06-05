@@ -8,6 +8,9 @@ Parameters:
   DeptsBucket:
     Type: String
     Description: S3 bucket for reference data and output workbook
+  ArtifactsBucket:
+    Type: String
+    Description: S3 bucket for deployment-time artifacts (Lambda layer zips, etc.) — not used at runtime
 
 Resources:
 
@@ -51,6 +54,12 @@ Resources:
     Properties:
       BucketName: rollcall-s3-dev-ses
 
+  # Deployment-time artifacts only — Lambda layer zips uploaded here before layer stacks deploy
+  RollCallArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ArtifactsBucket
+
 Outputs:
   CSVBucketName:
     Value: !Ref RollCallCSVBucket
@@ -66,3 +75,8 @@ Outputs:
     Value: !Ref RollCallSESBucket
     Export:
       Name: rollcall-s3-dev-ses
+
+  ArtifactsBucketName:
+    Value: !Ref RollCallArtifactsBucket
+    Export:
+      Name: !Ref ArtifactsBucket
