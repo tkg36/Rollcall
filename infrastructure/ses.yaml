@@ -1,8 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: SES receipt rules and email identities for the RollCall ETL pipeline
 
-# NOTE: After deployment, activate the rule set manually:
-#   aws ses set-active-receipt-rule-set --rule-set-name DeliverToS3 --profile 844905860028_AWSAdministratorAccess
 
 Parameters:
   SenderDomain:

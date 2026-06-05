@@ -1,13 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: S3 buckets for the RollCall ETL pipeline
 
+Parameters:
+  CsvBucket:
+    Type: String
+    Description: S3 bucket for processed XLSX attachments (csvParser writes, rollcall-lambda reads)
+  DeptsBucket:
+    Type: String
+    Description: S3 bucket for reference data and output workbook
+
 Resources:
 
   # Receives processed XLSX attachments from csvParser; read by rollcall-lambda
   RollCallCSVBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: rollcall-s3-csv
+      BucketName: !Ref CsvBucket
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:
@@ -25,7 +33,7 @@ Resources:
   RollCallDeptsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: rollcall-s3-dev-depts-reference
+      BucketName: !Ref DeptsBucket
       NotificationConfiguration:
         LambdaConfigurations:
           - Id: doneProcessing
@@ -47,12 +55,12 @@ Outputs:
   CSVBucketName:
     Value: !Ref RollCallCSVBucket
     Export:
-      Name: rollcall-s3-csv
+      Name: !Ref CsvBucket
 
   DeptsBucketName:
     Value: !Ref RollCallDeptsBucket
     Export:
-      Name: rollcall-s3-dev-depts-reference
+      Name: !Ref DeptsBucket
 
   SESBucketName:
     Value: !Ref RollCallSESBucket

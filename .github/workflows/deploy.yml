@@ -1,0 +1,199 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  # ── Read both config files and expose values to the deploy job ───────────────
+  load-config:
+    runs-on: ubuntu-latest
+    outputs:
+      aws-region:        ${{ steps.read.outputs.aws-region }}
+      oidc-role-arn:     ${{ steps.read.outputs.oidc-role-arn }}
+      stack-iam:         ${{ steps.read.outputs.stack-iam }}
+      stack-s3:          ${{ steps.read.outputs.stack-s3 }}
+      stack-sns:         ${{ steps.read.outputs.stack-sns }}
+      stack-sqs:         ${{ steps.read.outputs.stack-sqs }}
+      stack-ses:         ${{ steps.read.outputs.stack-ses }}
+      stack-cloudwatch:  ${{ steps.read.outputs.stack-cloudwatch }}
+      stack-csv-parser:  ${{ steps.read.outputs.stack-csv-parser }}
+      stack-rollcall:    ${{ steps.read.outputs.stack-rollcall }}
+      stack-ses-emailer: ${{ steps.read.outputs.stack-ses-emailer }}
+      csv-bucket:        ${{ steps.read.outputs.csv-bucket }}
+      depts-bucket:      ${{ steps.read.outputs.depts-bucket }}
+      sender-domain:     ${{ steps.read.outputs.sender-domain }}
+      sender-email:      ${{ steps.read.outputs.sender-email }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: read
+        name: Parse deploy-config.yaml and user-settings.yaml
+        run: |
+          python3 << 'EOF'
+          import yaml, os
+
+          config   = yaml.safe_load(open('.github/deploy-config.yaml'))
+          settings = yaml.safe_load(open('user-settings.yaml'))
+
+          outputs = {
+            'aws-region':        config['aws']['region'],
+            'oidc-role-arn':     config['aws']['oidcRoleArn'],
+            'stack-iam':         config['stacks']['iam'],
+            'stack-s3':          config['stacks']['s3'],
+            'stack-sns':         config['stacks']['sns'],
+            'stack-sqs':         config['stacks']['sqs'],
+            'stack-ses':         config['stacks']['ses'],
+            'stack-cloudwatch':  config['stacks']['cloudwatch'],
+            'stack-csv-parser':  config['stacks']['csvParser'],
+            'stack-rollcall':    config['stacks']['rollcallLambda'],
+            'stack-ses-emailer': config['stacks']['sesEmailer'],
+            'csv-bucket':        settings['CsvBucket'],
+            'depts-bucket':      settings['DeptsBucket'],
+            'sender-domain':     settings['SenderDomain'],
+            'sender-email':      settings['SenderEmail'],
+          }
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            for k, v in outputs.items():
+              f.write(f'{k}={v}\n')
+          EOF
+
+  # ── Deploy all stacks in dependency order, then run post-deploy steps ────────
+  deploy:
+    needs: load-config
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      AWS_REGION:        ${{ needs.load-config.outputs.aws-region }}
+      CSV_BUCKET:        ${{ needs.load-config.outputs.csv-bucket }}
+      DEPTS_BUCKET:      ${{ needs.load-config.outputs.depts-bucket }}
+      SENDER_DOMAIN:     ${{ needs.load-config.outputs.sender-domain }}
+      SENDER_EMAIL:      ${{ needs.load-config.outputs.sender-email }}
+      STACK_IAM:         ${{ needs.load-config.outputs.stack-iam }}
+      STACK_S3:          ${{ needs.load-config.outputs.stack-s3 }}
+      STACK_SNS:         ${{ needs.load-config.outputs.stack-sns }}
+      STACK_SQS:         ${{ needs.load-config.outputs.stack-sqs }}
+      STACK_SES:         ${{ needs.load-config.outputs.stack-ses }}
+      STACK_CLOUDWATCH:  ${{ needs.load-config.outputs.stack-cloudwatch }}
+      STACK_CSV_PARSER:  ${{ needs.load-config.outputs.stack-csv-parser }}
+      STACK_ROLLCALL:    ${{ needs.load-config.outputs.stack-rollcall }}
+      STACK_SES_EMAILER: ${{ needs.load-config.outputs.stack-ses-emailer }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ needs.load-config.outputs.oidc-role-arn }}
+          aws-region:     ${{ needs.load-config.outputs.aws-region }}
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      # ── Infrastructure ────────────────────────────────────────────────────────
+
+      - name: Deploy IAM roles
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/iam.yaml \
+            --stack-name $STACK_IAM \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy S3 buckets
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/s3.yaml \
+            --stack-name $STACK_S3 \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy SNS topics
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/sns.yaml \
+            --stack-name $STACK_SNS \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy SQS queues
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/sqs.yaml \
+            --stack-name $STACK_SQS \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy SES receipt rules
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/ses.yaml \
+            --stack-name $STACK_SES \
+            --parameter-overrides SenderDomain=$SENDER_DOMAIN \
+            --no-fail-on-empty-changeset
+
+      # ── Lambda functions ──────────────────────────────────────────────────────
+
+      - name: SAM build
+        run: |
+          sam build --template lambdas/csv-parser/template.yaml      --build-dir .aws-sam/csv-parser
+          sam build --template lambdas/rollcall-lambda/template.yaml  --build-dir .aws-sam/rollcall-lambda
+          sam build --template lambdas/ses-emailer/template.yaml      --build-dir .aws-sam/ses-emailer
+
+      - name: Deploy csvParser
+        run: |
+          sam deploy \
+            --template-file .aws-sam/csv-parser/template.yaml \
+            --stack-name $STACK_CSV_PARSER \
+            --region $AWS_REGION \
+            --resolve-s3 \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides CsvBucket=$CSV_BUCKET \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy rollcall-lambda
+        run: |
+          sam deploy \
+            --template-file .aws-sam/rollcall-lambda/template.yaml \
+            --stack-name $STACK_ROLLCALL \
+            --region $AWS_REGION \
+            --resolve-s3 \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides CsvBucket=$CSV_BUCKET DeptsBucket=$DEPTS_BUCKET \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy ses-emailer
+        run: |
+          sam deploy \
+            --template-file .aws-sam/ses-emailer/template.yaml \
+            --stack-name $STACK_SES_EMAILER \
+            --region $AWS_REGION \
+            --resolve-s3 \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides SenderEmail=$SENDER_EMAIL \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      # ── CloudWatch alarms ─────────────────────────────────────────────────────
+
+      - name: Deploy CloudWatch alarms
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudwatch.yaml \
+            --stack-name $STACK_CLOUDWATCH \
+            --no-fail-on-empty-changeset
+
+      # ── Post-deploy ───────────────────────────────────────────────────────────
+
+      - name: Activate SES receipt rule set
+        run: |
+          aws ses set-active-receipt-rule-set \
+            --rule-set-name DeliverToS3 \
+            --region $AWS_REGION

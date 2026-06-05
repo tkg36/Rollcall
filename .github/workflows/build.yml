@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile lambdas/rollcall-lambda/lambda_function.py
+          python -m py_compile lambdas/csv-parser/theLambda.py
+          python -m py_compile lambdas/ses-emailer/lambda_function.py
+
+      - name: Validate infrastructure templates
+        run: |
+          pip install cfn-lint --quiet
+          cfn-lint infrastructure/*.yaml
+
+      - name: Validate Lambda templates
+        run: |
+          sam validate --template lambdas/csv-parser/template.yaml     --region us-east-1
+          sam validate --template lambdas/rollcall-lambda/template.yaml --region us-east-1
+          sam validate --template lambdas/ses-emailer/template.yaml     --region us-east-1
+
+      - name: SAM build
+        run: |
+          sam build --template lambdas/csv-parser/template.yaml      --build-dir .aws-sam/csv-parser
+          sam build --template lambdas/rollcall-lambda/template.yaml  --build-dir .aws-sam/rollcall-lambda
+          sam build --template lambdas/ses-emailer/template.yaml      --build-dir .aws-sam/ses-emailer
