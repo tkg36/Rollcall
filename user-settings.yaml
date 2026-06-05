@@ -15,6 +15,11 @@ DeptsBucket: rollcall-s3-depts-reference
 # S3 bucket where SES delivers raw inbound emails; csvParser reads from here.
 SesBucket: rollcall-s3-ses
 
+# ─── Business Logic ───────────────────────────────────────────────────────────
+
+# Name and employee ID stamped into the MD-1 column of every output row.
+MD1Name: "Manish Nagar (019067)"
+
 # ─── Report File Prefixes ─────────────────────────────────────────────────────
 # The beginning of each expected attachment filename as it arrives in the CSV bucket.
 # Update these if the names of the incoming report files change.

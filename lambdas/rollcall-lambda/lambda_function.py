@@ -33,6 +33,8 @@ FILE_PREFIXES = {
     "candidates":        os.environ.get("FILE_PREFIX_CANDIDATES"),
 }
 
+MD1_NAME = os.environ.get("MD1_NAME", "")
+
 FILTER_CONFIG = {
     "unfilled": {
         "sheet":          "Sheet1",
@@ -281,7 +283,7 @@ def build_crew_unfilled(filtered, ref):
             "Grade level":                                 grade_level,
             "Management Type":                             management_type,
             "Manager Name":                                row.get("Hiring Manager Name", ""),
-            "MD-1":                                        "Manish Nagar (019067)",
+            "MD-1":                                        MD1_NAME,
             "MD-2":                                        md2,
             "Status":                                      row.get("Job Requisition Status", ""),
             "Req #":                                       req_num_int,
@@ -407,7 +409,7 @@ def build_crew_filled(filtered, ref):
             "Grade level":                                 grade_level,
             "Management Type":                             management_type,
             "Manager Name":                                row.get("Hiring Manager", ""),
-            "MD-1":                                        "Manish Nagar (019067)",
+            "MD-1":                                        MD1_NAME,
             "MD-2":                                        md2,
             "Status":                                      short_status,
             "Req #":                                       req_num_int,

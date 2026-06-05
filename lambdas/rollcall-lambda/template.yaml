@@ -26,6 +26,9 @@ Parameters:
   FilePrefixCandidates:
     Type: String
     Description: Filename prefix for the candidate flow report
+  MD1Name:
+    Type: String
+    Description: Name and employee ID stamped into the MD-1 column of every output row
 
 Resources:
 
@@ -49,6 +52,7 @@ Resources:
           FILE_PREFIX_CONTRACTOR_OPEN: !Ref FilePrefixContractorOpen
           FILE_PREFIX_CONTRACTOR_CLOSED: !Ref FilePrefixContractorClosed
           FILE_PREFIX_CANDIDATES: !Ref FilePrefixCandidates
+          MD1_NAME: !Ref MD1Name
       Architectures:
         - x86_64
       EphemeralStorage:

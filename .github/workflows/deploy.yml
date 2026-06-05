@@ -32,6 +32,7 @@ jobs:
       file-prefix-contractor-closed: ${{ steps.read.outputs.file-prefix-contractor-closed }}
       file-prefix-candidates:     ${{ steps.read.outputs.file-prefix-candidates }}
       alarm-email:                ${{ steps.read.outputs.alarm-email }}
+      md1-name:                   ${{ steps.read.outputs.md1-name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +78,7 @@ jobs:
             'file-prefix-contractor-closed': settings['FilePrefixContractorClosed'],
             'file-prefix-candidates':     settings['FilePrefixCandidates'],
             'alarm-email':                codeowners_email('.github/CODEOWNERS'),
+            'md1-name':                   settings['MD1Name'],
           }
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -111,6 +113,7 @@ jobs:
       FILE_PREFIX_CONTRACTOR_CLOSED:  ${{ needs.load-config.outputs.file-prefix-contractor-closed }}
       FILE_PREFIX_CANDIDATES:         ${{ needs.load-config.outputs.file-prefix-candidates }}
       ALARM_EMAIL:                    ${{ needs.load-config.outputs.alarm-email }}
+      MD1_NAME:                       ${{ needs.load-config.outputs.md1-name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -207,6 +210,7 @@ jobs:
               FilePrefixContractorOpen="$FILE_PREFIX_CONTRACTOR_OPEN" \
               FilePrefixContractorClosed="$FILE_PREFIX_CONTRACTOR_CLOSED" \
               FilePrefixCandidates="$FILE_PREFIX_CANDIDATES" \
+              MD1Name="$MD1_NAME" \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
