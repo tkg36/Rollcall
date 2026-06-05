@@ -172,10 +172,7 @@ Once DNS records have propagated (allow up to 24–48 hours after your DNS team 
 
 ## Troubleshooting
 
-**Deploy fails on the IAM stack with `AlreadyExistsException`**
-The account already has an IAM role named `csvParser-role`, `rollcall-lambda-role`, or `ses-emailer-function-role`. Rename the conflicting roles in `infrastructure/iam.yaml` and update the matching `Role:` ARN lines in the three Lambda `template.yaml` files to match, then redeploy.
-
-**Deploy fails on the IAM stack with a permissions error**
+**Deploy fails on the IAM stack**
 The GitHub Actions role lacks sufficient permissions. Ask your AWS team to verify it has `AdministratorAccess` or equivalent permissions covering CloudFormation, Lambda, IAM, SES, SQS, SNS, and S3.
 
 **Deploy fails with `BucketAlreadyExists`**
@@ -189,9 +186,6 @@ The expected XLSX attachments were not found in the CSV bucket. Check csvParser'
 
 **ses-emailer fails with `MessageRejected`**
 The account is still in SES sandbox (Step 5 not complete), or the subdomain is not yet verified (DNS records from Step 4 not yet propagated). Check **SES console → Verified identities** for the subdomain's verification status.
-
-**Lambda deploy fails referencing a layer ARN**
-The AWSSDKPandas Lambda layer is not available in the selected region. Confirm the deployment region is one of the three SES-supported regions (`us-east-1`, `us-west-2`, `eu-west-1`) and that the layer version exists there. The current layer ARNs are listed in `lambdas/csv-parser/template.yaml` and `lambdas/rollcall-lambda/template.yaml`; AWS publishes updated regional availability at [github.com/aws/aws-sdk-pandas](https://github.com/aws/aws-sdk-pandas/releases).
 
 **Alarm emails are not being received**
 The SNS subscription confirmation was not completed. Open the **SNS console → Topics**, find `Lambda1_Error_Notif` or `Lambda2_Error_Notif`, click **Subscriptions**, and check the status. If it shows `PendingConfirmation`, use **Request confirmation** to resend the email.
