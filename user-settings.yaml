@@ -17,10 +17,13 @@ SesBucket: rollcall-s3-dev-ses
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 
-# Domain that receives inbound trigger emails and sends outbound result emails.
-# Must be verified as an SES domain identity in the target AWS account.
-SenderDomain: vanguard.com
+# Subdomain that receives inbound trigger emails and sends outbound result emails.
+# Must be a subdomain of your organization's primary domain — do NOT use the root domain,
+# as the MX record required for SES email receiving would redirect all employee email to AWS.
+# Example: pipeline.yourdomain.com
+SenderDomain: pipeline.vanguard.com
 
 # The "From" address used when emailing the output workbook back to the requester.
-# Must be an address within SenderDomain and a verified SES sender identity.
-SenderEmail: "[Your monitored account]@vanguard.com"
+# Must be an address within SenderDomain.
+# Example: rollcall@pipeline.yourdomain.com
+SenderEmail: "rollcall@pipeline.vanguard.com"

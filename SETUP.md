@@ -9,215 +9,174 @@ RollCall is an automated headcount reconciliation pipeline. When a trigger email
 3. Cross-references lookup data and builds a combined output workbook
 4. Emails the output workbook back to the original sender automatically
 
-Setup involves three areas: filling in configuration files, one-time AWS account preparation, and DNS changes to activate email sending and receiving. The sections below walk through each in order.
-
-> **Note for existing AWS accounts:** If your organization already uses AWS, most of the infrastructure steps are additive — they create new resources without touching existing ones. The main exception is DNS: adding an MX record for SES email receiving will redirect inbound mail for that domain (or subdomain) to AWS. Coordinate with your network/DNS team before making that change.
-
 ---
 
 ## Quick-Start Checklist
 
 - [ ] Fill in `user-settings.yaml`
 - [ ] Fill in `.github/deploy-config.yaml`
-- [ ] Have your AWS administrator complete the GitHub Actions OIDC setup (Step 2)
-- [ ] Create a `production` environment in GitHub repository settings (Step 3)
-- [ ] Run the Deploy workflow (Step 4)
-- [ ] Have your DNS/network team add SES DNS records (Step 5)
-- [ ] Submit an AWS Support request for SES production access (Step 6)
+- [ ] Have your AWS team complete the GitHub Actions access setup (Step 2)
+- [ ] Run the Deploy workflow (Step 3)
+- [ ] Have your DNS team add the SES records for the pipeline subdomain (Step 4)
+- [ ] Submit an AWS Support request for SES production access (Step 5)
 
 ---
 
 ## Step 1 — Fill in Configuration Files
 
-Two files in the repository need to be filled in before deploying. Both use placeholder values that make it obvious what to replace.
+Two files need to be filled in before deploying.
 
 ### `user-settings.yaml` (root of repo)
 
 | Setting | What to put here |
 |---------|-----------------|
-| `CsvBucket` | A name for the S3 bucket that will hold parsed email attachments. Must be globally unique across all of AWS (e.g. `yourorg-rollcall-csv`). |
-| `DeptsBucket` | A name for the S3 bucket that will hold reference files and output workbooks. Must be globally unique (e.g. `yourorg-rollcall-data`). |
-| `SesBucket` | A name for the S3 bucket that will hold raw inbound emails. Must be globally unique (e.g. `yourorg-rollcall-email`). |
-| `SenderDomain` | The domain that will send and receive pipeline emails (e.g. `example.com`). Your organization must control this domain's DNS. |
-| `SenderEmail` | The full email address the pipeline sends from (e.g. `rollcall@example.com`). Must be an address within `SenderDomain`. |
+| `CsvBucket` | A globally unique S3 bucket name for parsed email attachments (e.g. `yourorg-rollcall-csv`) |
+| `DeptsBucket` | A globally unique S3 bucket name for reference files and output workbooks (e.g. `yourorg-rollcall-data`) |
+| `SesBucket` | A globally unique S3 bucket name for raw inbound emails (e.g. `yourorg-rollcall-ses`) |
+| `SenderDomain` | A **subdomain** your organization controls — see note below |
+| `SenderEmail` | The full send/receive address for the pipeline (e.g. `rollcall@pipeline.yourdomain.com`) |
 
-> **On S3 bucket naming:** Bucket names must be unique across every AWS account in the world. If a name is taken, the S3 stack deploy will fail with a `BucketAlreadyExists` error. Choose names specific to your organization to avoid collisions.
+> **Why a subdomain is required:** AWS SES email receiving works by pointing an MX record at AWS. Using your root domain (e.g. `yourdomain.com`) would redirect all employee email to AWS. Use a dedicated subdomain (e.g. `pipeline.yourdomain.com`) so only mail sent to that address is handled by the pipeline. Your DNS team will need to create this subdomain — see Step 4.
+
+S3 bucket names must be unique across all AWS accounts globally. If a name is taken, the deploy will fail with `BucketAlreadyExists` — choose names specific to your organization.
 
 ### `.github/deploy-config.yaml`
 
 | Setting | What to put here |
 |---------|-----------------|
-| `aws.region` | The AWS region to deploy into (e.g. `us-east-1`). All resources will be created in this region. |
-| `aws.oidcRoleArn` | The ARN of the IAM role GitHub Actions will use to deploy. Your AWS administrator will provide this after completing Step 2. |
+| `aws.region` | AWS region to deploy into (e.g. `us-east-1`) |
+| `aws.oidcRoleArn` | ARN of the IAM role GitHub Actions will use — your AWS team will provide this (Step 2) |
 
 Stack names under `stacks` can be left as-is unless they conflict with existing CloudFormation stacks in your account.
 
 ---
 
-## Step 2 — GitHub Actions AWS Access (AWS Administrator Task)
+## Step 2 — GitHub Actions AWS Access (AWS Team Task)
 
-> **Who does this:** Your AWS administrator or cloud team. This is a one-time setup task. If your organization uses a ticketing system, open a request describing what's needed before starting the deploy.
+> **Who does this:** Your AWS administrator. If your organization uses a ticketing system, open a request before starting the deploy.
 
-The deploy workflow authenticates to AWS using a short-lived token rather than stored credentials. This requires a one-time setup in the AWS account: creating a trust relationship between GitHub and AWS (called OIDC), then creating a role that the workflow can assume.
+The deploy workflow authenticates to AWS using short-lived OIDC tokens — no stored credentials. This requires a one-time setup: an IAM OIDC identity provider and a role the workflow can assume.
+
+Ask your AWS team to:
+
+1. Create an IAM OIDC identity provider for `https://token.actions.githubusercontent.com` (if one doesn't already exist in the account)
+2. Create an IAM role trusted by that provider, scoped to this repository (`repo:YOUR_ORG/YOUR_REPO:*`), with `AdministratorAccess` (or equivalent CloudFormation/Lambda/IAM/SES/SQS/SNS/S3 permissions)
+3. Provide the role ARN to paste into `.github/deploy-config.yaml`
 
 **References:**
-- [GitHub: Configuring OIDC with Amazon Web Services](https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
-- [AWS: Creating an IAM OIDC identity provider](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html)
+- [GitHub: Configuring OIDC with AWS](https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
 - [AWS: Creating a role for OIDC federation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html)
 
-### 2a — Create the OIDC Identity Provider
-
-In the AWS IAM console:
-
-1. Go to **IAM → Identity providers → Add provider**
-2. Select **OpenID Connect**
-3. Provider URL: `https://token.actions.githubusercontent.com`
-4. Click **Get thumbprint**
-5. Audience: `sts.amazonaws.com`
-6. Click **Add provider**
-
-> This only needs to be done once per AWS account. If `token.actions.githubusercontent.com` already appears in the Identity providers list, skip this step.
-
-### 2b — Create the IAM Role
-
-1. Go to **IAM → Roles → Create role**
-2. Trusted entity type: **Web identity**
-3. Identity provider: `token.actions.githubusercontent.com`
-4. Audience: `sts.amazonaws.com`
-5. Add a condition to restrict the role to the RollCall repository:
-   - Key: `token.actions.githubusercontent.com:sub`
-   - Condition: `StringLike`
-   - Value: `repo:YOUR_GITHUB_ORG/YOUR_REPO_NAME:*`
-6. Attach permissions. The workflow needs to create and update CloudFormation stacks, Lambda functions, S3 buckets, IAM roles, SQS queues, SNS topics, SES rules, and CloudWatch alarms. `AdministratorAccess` covers all of this and is simplest for initial setup — your security team can scope it down later if needed.
-7. Name the role (e.g. `GitHubActions-RollCall`), create it, and copy the role ARN
-8. Paste the role ARN into `.github/deploy-config.yaml` under `oidcRoleArn`
-
 ---
 
-## Step 3 — Create a GitHub Deployment Environment
+## Step 3 — Run the Deploy
 
-The deploy workflow uses a GitHub environment called `production`. This allows you to require manual approval before any deploy runs.
-
-1. Go to your GitHub repository → **Settings → Environments → New environment**
-2. Name it `production`
-3. Optionally, add required reviewers who must approve deploys before they run
-
----
-
-## Step 4 — Run the Deploy
+The deploy workflow is triggered manually to prevent unintended deployments.
 
 1. Go to your GitHub repository → **Actions → Deploy**
-2. Click **Run workflow**, select the `master` branch, and click **Run workflow**
-3. The workflow will take several minutes. Resources deploy in this order:
-   - IAM roles → S3 buckets → Reference data upload → SNS → SQS → SES rules → Lambda functions → CloudWatch alarms → SES rule set activation
+2. Click **Run workflow** → select `master` → **Run workflow**
+3. If your `production` environment has required reviewers, approve the pending deployment when prompted
+4. The workflow takes several minutes. Resources deploy in order: IAM roles → S3 buckets → reference data → SNS → SQS → SES rules → Lambda functions → CloudWatch alarms
 
-If a step fails, check the AWS CloudFormation console in your account — click the failing stack name and open the **Events** tab for a plain-English error message. Common issues are listed in the [Troubleshooting](#troubleshooting) section at the bottom of this guide.
+If a step fails, open the **AWS CloudFormation console**, click the failing stack, and open the **Events** tab — the error will be listed in plain English. Common issues are in the [Troubleshooting](#troubleshooting) section.
 
 ---
 
-## Step 5 — Add DNS Records for SES (DNS/Network Team Task)
+## Step 4 — Add DNS Records for the Pipeline Subdomain (DNS Team Task)
 
-> **Who does this:** Your DNS or network team. This step requires access to your domain's DNS records. If your organization uses a ticketing system, open a request including the record values from the steps below after the deploy has run.
+> **Who does this:** Your DNS or network team. After the deploy runs, provide them the record values from the steps below. If your organization uses a ticketing system, open a request with those values included.
 
-The deploy creates an SES identity for your domain, but AWS cannot add DNS records on your behalf. Email will not send or receive until the records below are in place.
+AWS cannot add DNS records on your behalf. The pipeline subdomain won't send or receive email until the following records are in place.
 
 **References:**
-- [AWS SES: Creating and verifying identities](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html)
 - [AWS SES: Easy DKIM setup](https://docs.aws.amazon.com/ses/latest/dg/send-email-authentication-dkim-easy.html)
 - [AWS SES: MX record for email receiving](https://docs.aws.amazon.com/ses/latest/dg/receiving-email-mx-record.html)
 
-### 5a — DKIM Records (required for sending)
+### 4a — DKIM Records (required for sending)
 
-After the deploy runs, AWS generates three DKIM CNAME records that must be added to the domain's DNS. To find them:
+After the deploy runs, AWS generates three CNAME records. To find them:
 
-1. Open the **SES console** → **Verified identities** → click your domain
+1. Open the **SES console → Verified identities** → click your subdomain
 2. Click the **DKIM** tab
-3. You will see three CNAME records to add. They look like:
+3. Copy all three CNAME records and provide them to your DNS team
 
-   | Type | Name | Value |
-   |------|------|-------|
-   | CNAME | `<token>._domainkey.yourdomain.com` | `<token>.dkim.amazonses.com` |
-   | CNAME | `<token>._domainkey.yourdomain.com` | `<token>.dkim.amazonses.com` |
-   | CNAME | `<token>._domainkey.yourdomain.com` | `<token>.dkim.amazonses.com` |
-
-4. Provide all three records to your DNS team and ask them to add them
-5. Verification typically completes within a few hours of the records being added; the SES console will update the status automatically
-
-### 5b — MX Record (required for receiving)
-
-An MX record tells the internet where to deliver email for your domain. Add:
-
-| Type | Name | Value | Priority |
-|------|------|-------|----------|
-| MX | `yourdomain.com` | `inbound-smtp.REGION.amazonaws.com` | 10 |
-
-Replace `REGION` with your deployment region (e.g. `inbound-smtp.us-east-1.amazonaws.com`). The full list of regional endpoints is in the [AWS documentation](https://docs.aws.amazon.com/ses/latest/dg/receiving-email-mx-record.html).
-
-> **Important:** If the domain already has an MX record (e.g. pointing to Microsoft 365 or Google Workspace), adding this record will redirect **all** inbound mail for the domain to AWS. To avoid this, use a dedicated subdomain for the pipeline (e.g. `pipeline.yourdomain.com`) and update `SenderDomain` in `user-settings.yaml` to match before deploying.
-
-### 5c — SPF Record (recommended)
-
-An SPF record tells receiving mail servers that SES is authorized to send on behalf of your domain, reducing the chance of pipeline emails being flagged as spam.
+They look like:
 
 | Type | Name | Value |
 |------|------|-------|
-| TXT | `yourdomain.com` | `"v=spf1 include:amazonses.com ~all"` |
+| CNAME | `<token>._domainkey.pipeline.yourdomain.com` | `<token>.dkim.amazonses.com` |
+| CNAME | `<token>._domainkey.pipeline.yourdomain.com` | `<token>.dkim.amazonses.com` |
+| CNAME | `<token>._domainkey.pipeline.yourdomain.com` | `<token>.dkim.amazonses.com` |
 
-If an SPF record already exists for the domain, ask your DNS team to add `include:amazonses.com` to it rather than creating a new one.
+Verification completes automatically within a few hours after the records are added.
+
+### 4b — MX Record (required for receiving)
+
+| Type | Name | Value | Priority |
+|------|------|-------|----------|
+| MX | `pipeline.yourdomain.com` | `inbound-smtp.REGION.amazonaws.com` | 10 |
+
+Replace `pipeline.yourdomain.com` with your actual subdomain and `REGION` with your deployment region (e.g. `inbound-smtp.us-east-1.amazonaws.com`). The full list of regional endpoints is in the [AWS documentation](https://docs.aws.amazon.com/ses/latest/dg/receiving-email-mx-record.html).
+
+### 4c — SPF Record (recommended)
+
+Prevents pipeline emails from being flagged as spam by recipient mail servers.
+
+| Type | Name | Value |
+|------|------|-------|
+| TXT | `pipeline.yourdomain.com` | `"v=spf1 include:amazonses.com ~all"` |
 
 ---
 
-## Step 6 — Request SES Production Access (AWS Support Request)
+## Step 5 — Request SES Production Access (AWS Support Request)
 
-> **Who does this:** Your AWS administrator or the account owner. This requires submitting a request through the AWS console. If your organization uses a ticketing system, open an internal request asking your AWS admin team to submit this on the account's behalf.
+> **Who does this:** Your AWS administrator. Open an internal ticket asking your AWS team to submit this on the account's behalf, or have them check whether the account is already in production mode.
 
-New AWS accounts restrict outbound email to verified addresses only (called "sandbox mode"). The pipeline needs to send to arbitrary addresses, so production access must be requested.
+New AWS accounts can only send email to verified addresses. The pipeline needs to send to arbitrary recipients, so production access must be requested.
+
+To check if the account is already in production: open **SES console → Account dashboard**. If no sandbox warning appears, skip this step.
+
+If still in sandbox:
+
+1. Open **SES console → Account dashboard → Request production access**
+2. Fill in:
+   - **Mail type:** Transactional
+   - **Use case:** Automated internal reporting — sends processed HR workbooks to known internal recipients. Low volume (single-digit emails per pipeline run).
+3. Submit — AWS typically responds within 24 hours
 
 **Reference:** [AWS SES: Request production access](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html)
 
-1. Open the **SES console → Account dashboard**
-2. Under **Sending limits**, click **Request production access**
-3. Fill in the form:
-   - **Mail type:** Transactional
-   - **Website URL:** Your organization's internal portal URL, or a brief description if none applies
-   - **Use case:** Automated internal reporting — the pipeline sends processed HR workbooks to known recipients within the organization. Volume is low (single-digit emails per pipeline run).
-4. Submit the request. AWS typically responds within 24 hours for clearly described business use cases
-
-> If the account is already in production (i.e., it has been used for other SES sending), this step can be skipped. Check **SES console → Account dashboard** — if no sandbox warning is shown, you're already in production.
-
 ---
 
-## Step 7 — Test the Pipeline
+## Step 6 — Test the Pipeline
 
-Once the DNS records have propagated (allow up to 24–48 hours) and SES is out of sandbox:
+Once DNS records have propagated (allow up to 24–48 hours after your DNS team adds them) and SES is out of sandbox:
 
-1. Send an email to the address set as `SenderEmail` in `user-settings.yaml`, with the expected XLSX reports attached
-2. Within a few minutes, the output workbook should arrive in your inbox from that same sender address
-3. If nothing arrives, check **CloudWatch → Log groups** in the AWS console for:
+1. Send an email to the address in `SenderEmail` with the expected XLSX reports attached
+2. Within a few minutes, the output workbook should arrive in your inbox from that same address
+3. If nothing arrives, check **CloudWatch → Log groups** for:
    - `/aws/lambda/csvParser`
    - `/aws/lambda/rollcall-lambda`
    - `/aws/lambda/ses-emailer-function`
-
-Each log group will show what each Lambda processed and any errors encountered.
 
 ---
 
 ## Troubleshooting
 
 **Deploy fails on the IAM stack**
-The GitHub Actions role does not have sufficient permissions. Ask your AWS administrator to verify the role has `AdministratorAccess` or equivalent CloudFormation and IAM permissions.
+The GitHub Actions role lacks sufficient permissions. Ask your AWS team to verify it has `AdministratorAccess` or equivalent permissions covering CloudFormation, Lambda, IAM, SES, SQS, SNS, and S3.
 
 **Deploy fails with `BucketAlreadyExists`**
-The bucket name chosen in `user-settings.yaml` is already taken by another AWS account. Choose a more unique name and redeploy.
+The bucket name in `user-settings.yaml` is taken by another AWS account. Choose a more unique name and redeploy.
 
 **Emails arrive at the SES bucket but csvParser doesn't trigger**
-Confirm the SNS and SQS stacks deployed successfully and that the SES receipt rule is active. In the SES console, go to **Email receiving → Rule sets** and confirm `DeliverToS3` is listed as the active rule set.
+Check that the SNS and SQS stacks deployed successfully and that the SES receipt rule set is active. In the SES console, go to **Email receiving → Rule sets** and confirm `DeliverToS3` is listed as active.
 
 **rollcall-lambda fails with `FileNotFoundError`**
-The expected XLSX attachments were not found. Check csvParser's CloudWatch logs to confirm attachment extraction succeeded. The pipeline expects files whose names begin with specific prefixes (`ES&F_GR&S Unfilled Requisition Report`, `NEW-IT Contractor-VG-Vendor Req Report-Open`, etc.).
+The expected XLSX attachments were not found in the CSV bucket. Check csvParser's CloudWatch logs to confirm extraction succeeded. The pipeline expects files with specific name prefixes.
 
 **ses-emailer fails with `MessageRejected`**
-Either the account is still in SES sandbox mode (Step 6 not yet complete), or the sender domain has not been verified (DNS records from Step 5 not yet propagated or not yet added). Check the **SES console → Verified identities** for the domain's current verification status.
+The account is still in SES sandbox (Step 5 not complete), or the subdomain is not yet verified (DNS records from Step 4 not yet propagated). Check **SES console → Verified identities** for the subdomain's verification status.
 
 ---
 
@@ -225,6 +184,7 @@ Either the account is still in SES sandbox mode (Step 6 not yet complete), or th
 
 ```
 Trigger email with XLSX attachments
+sent to SenderEmail address
            │
            ▼
     SES Receipt Rule
